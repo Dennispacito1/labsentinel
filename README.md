@@ -35,25 +35,25 @@ labsentinel --mode api --host 192.168.1.10 --user root --realm pam --password 'Y
 Show all options:
 
 ```bash
-labsentinel scan --help
+labsentinel --help
 ```
 
 API mode:
 
 ```bash
-labsentinel scan --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD'
+labsentinel --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD'
 ```
 
 Local mode:
 
 ```bash
-labsentinel scan --mode local
+labsentinel --mode local
 ```
 
 JSON export:
 
 ```bash
-labsentinel scan --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD' --json
+labsentinel --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD' --json
 ```
 
 ## Example output
