@@ -64,6 +64,7 @@ def check_datacenter_firewall(client: ProxmoxClient) -> Tuple[List[Dict[str, Any
                     "severity": "WARNING",
                     "title": "Firewall Check Failed",
                     "message": _firewall_check_failed_message(path, 200, "invalid response shape"),
+                    "category": "Network Segmentation",
                     "impact": 0,
                 }
             )
@@ -79,6 +80,7 @@ def check_datacenter_firewall(client: ProxmoxClient) -> Tuple[List[Dict[str, Any
                         "severity": "CRITICAL",
                         "title": "Datacenter Firewall Disabled",
                         "message": "Proxmox datacenter firewall is disabled. Enable it to enforce host/guest rules.",
+                        "category": "Network Segmentation",
                         "impact": 10,
                     }
                 )
@@ -89,6 +91,7 @@ def check_datacenter_firewall(client: ProxmoxClient) -> Tuple[List[Dict[str, Any
                         "severity": "INFO",
                         "title": "Datacenter Firewall Enabled",
                         "message": "Datacenter firewall is enabled.",
+                        "category": "Network Segmentation",
                         "impact": 0,
                     }
                 )
@@ -104,6 +107,7 @@ def check_datacenter_firewall(client: ProxmoxClient) -> Tuple[List[Dict[str, Any
                     "Unable to determine if firewall is enabled via API. "
                     "Verify in Proxmox UI: Datacenter -> Firewall."
                 ),
+                "category": "Network Segmentation",
                 "impact": 0,
             }
         )
@@ -114,6 +118,7 @@ def check_datacenter_firewall(client: ProxmoxClient) -> Tuple[List[Dict[str, Any
                 "severity": "WARNING",
                 "title": "Firewall Check Failed",
                 "message": _firewall_check_failed_message(exc.path or path, exc.status_code, exc.details),
+                "category": "Network Segmentation",
                 "impact": 0,
             }
         )
@@ -138,6 +143,7 @@ def check_node_firewall(
                     "severity": "WARNING",
                     "title": "Firewall Check Failed",
                     "message": _firewall_check_failed_message(path, 200, "invalid response shape"),
+                    "category": "Network Segmentation",
                     "impact": 0,
                 }
             )
@@ -153,6 +159,7 @@ def check_node_firewall(
                         "severity": "CRITICAL",
                         "title": "Node Firewall Disabled",
                         "message": f"Firewall is disabled on node '{node_name}'. Enable to apply rules on this node.",
+                        "category": "Network Segmentation",
                         "impact": 10,
                     }
                 )
@@ -163,6 +170,7 @@ def check_node_firewall(
                         "severity": "INFO",
                         "title": "Node Firewall Enabled",
                         "message": f"Firewall is enabled on node '{node_name}'.",
+                        "category": "Network Segmentation",
                         "impact": 0,
                     }
                 )
@@ -178,6 +186,7 @@ def check_node_firewall(
                     "Unable to determine if firewall is enabled via API. "
                     f"Verify in Proxmox UI: Node '{node_name}' -> Firewall."
                 ),
+                "category": "Network Segmentation",
                 "impact": 0,
             }
         )
@@ -188,6 +197,7 @@ def check_node_firewall(
                 "severity": "WARNING",
                 "title": "Firewall Check Failed",
                 "message": _firewall_check_failed_message(exc.path or path, exc.status_code, exc.details),
+                "category": "Network Segmentation",
                 "impact": 0,
             }
         )

@@ -5,6 +5,7 @@ from __future__ import annotations
 import textwrap
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
+from labsentinel.scoring import CATEGORY_WEIGHTS
 
 LINE_WIDTH = 90
 
@@ -45,11 +46,20 @@ def format_finding_line(finding: Dict[str, Any]) -> str:
     return _wrap(text, initial="- ", subsequent="  ")
 
 
-def _top_risks(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _finding_weighted_loss(finding: Dict[str, Any], weights: Dict[str, int]) -> float:
+    impact = finding.get("impact", 0)
+    if not isinstance(impact, (int, float)):
+        return 0.0
+    category = str(finding.get("category", ""))
+    weight = float(weights.get(category, 0))
+    return float(impact) * (weight / 100.0)
+
+
+def _top_risks(findings: List[Dict[str, Any]], weights: Dict[str, int]) -> List[Dict[str, Any]]:
     scored = [f for f in findings if isinstance(f.get("impact"), (int, float)) and int(f["impact"]) > 0]
     return sorted(
         scored,
-        key=lambda item: (-int(item.get("impact", 0)), str(item.get("id", ""))),
+        key=lambda item: (-_finding_weighted_loss(item, weights), -int(item.get("impact", 0)), str(item.get("id", ""))),
     )[:3]
 
 
@@ -137,7 +147,11 @@ def render_non_json_report(result: Dict[str, Any], version: str) -> str:
     score = int(result.get("score", 0))
     findings: List[Dict[str, Any]] = list(result.get("findings", []))
     risk = classify_risk(score)
-    top = _top_risks(findings)
+    scoring_meta = result.get("meta", {}).get("scoring", {})
+    weights = scoring_meta.get("weights", CATEGORY_WEIGHTS)
+    category_health = scoring_meta.get("category_health", {})
+    category_contrib = scoring_meta.get("category_score_contrib", {})
+    top = _top_risks(findings, weights)
     top_ids = {str(item.get("id", "")) for item in top}
 
     version_label = version
@@ -150,6 +164,19 @@ def render_non_json_report(result: Dict[str, Any], version: str) -> str:
     lines.append(f"Score: {score}/100")
     lines.append(f"Risk Level: {risk}")
     lines.append("=" * 64)
+    lines.append("Category Breakdown")
+    for category in CATEGORY_WEIGHTS:
+        health = float(category_health.get(category, 100.0))
+        contrib = float(category_contrib.get(category, 0.0))
+        weight = int(weights.get(category, CATEGORY_WEIGHTS[category]))
+        lines.append(
+            _wrap(
+                f"{category}: health {health:.1f}/100, weight {weight}, score contrib {contrib:.2f}",
+                initial="- ",
+                subsequent="  ",
+            )
+        )
+    lines.append("-" * 64)
 
     lines.append("Top Risks")
     if not top:
@@ -157,8 +184,9 @@ def render_non_json_report(result: Dict[str, Any], version: str) -> str:
     else:
         for finding in top:
             impact = int(finding.get("impact", 0))
+            weighted_loss = _finding_weighted_loss(finding, weights)
             sev = str(finding.get("severity", "INFO")).upper()
-            head = f"[{sev}] impact {impact} - "
+            head = f"[{sev}] weighted loss {weighted_loss:.2f} (impact {impact}) - "
             text = format_finding_line(finding)[2:]
             lines.append(_wrap(text, initial=f"- {head}", subsequent="  "))
     lines.append("-" * 64)

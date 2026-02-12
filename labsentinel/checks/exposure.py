@@ -23,6 +23,8 @@ def check_api_exposure(client: ProxmoxClient) -> Dict[str, Any]:
                 "severity": "INFO",
                 "title": "Proxmox API Authenticated",
                 "message": "Proxmox API is reachable and authentication succeeded.",
+                "category": "Remote Exposure",
+                "impact": 0,
             }
         )
     except ProxmoxAuthError as exc:
@@ -32,6 +34,8 @@ def check_api_exposure(client: ProxmoxClient) -> Dict[str, Any]:
                 "severity": "CRITICAL",
                 "title": "Proxmox API Auth Failed",
                 "message": f"{exc} Hint: try user@realm format or pass --realm/--otp.",
+                "category": "Authentication Hardening",
+                "impact": 60,
             }
         )
     except ProxmoxConnectionError as exc:
@@ -41,6 +45,8 @@ def check_api_exposure(client: ProxmoxClient) -> Dict[str, Any]:
                 "severity": "WARNING",
                 "title": "Proxmox API Unreachable",
                 "message": str(exc),
+                "category": "Remote Exposure",
+                "impact": 20,
             }
         )
     except ProxmoxApiError as exc:
@@ -50,6 +56,8 @@ def check_api_exposure(client: ProxmoxClient) -> Dict[str, Any]:
                 "severity": "WARNING",
                 "title": "Proxmox API Error",
                 "message": str(exc),
+                "category": "Remote Exposure",
+                "impact": 10,
             }
         )
 

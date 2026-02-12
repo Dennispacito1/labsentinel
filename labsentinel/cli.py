@@ -104,6 +104,21 @@ def scan(
         "--lan-ports",
         help="Comma-separated port list override for LAN scan (e.g. 22,80,443,8006).",
     ),
+    mgmt_bridge: str = typer.Option(
+        "vmbr0",
+        "--mgmt-bridge",
+        help="Management bridge name used by Proxmox host (default: vmbr0).",
+    ),
+    wan_probe: bool = typer.Option(
+        False,
+        "--wan-probe/--no-wan-probe",
+        help="Enable/disable WAN reachability probes from current vantage point.",
+    ),
+    wan_target: Optional[str] = typer.Option(
+        None,
+        "--wan-target",
+        help="WAN hostname/IP to probe when --wan-probe is enabled.",
+    ),
 ) -> None:
     """Run a LabSentinel scan."""
     try:
@@ -120,6 +135,9 @@ def scan(
             debug=debug,
             lan_scan=lan_scan,
             lan_ports=parsed_lan_ports,
+            mgmt_bridge=mgmt_bridge,
+            wan_probe=wan_probe,
+            wan_target=wan_target,
         )
     except ValueError as exc:
         typer.secho(str(exc), fg=typer.colors.RED, err=True)
