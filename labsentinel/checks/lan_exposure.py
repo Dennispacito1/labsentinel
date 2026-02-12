@@ -36,6 +36,7 @@ def check_lan_ports(
                     "message": (
                         "Proxmox UI/API reachable on LAN (8006). Ensure it is restricted to a management network/VLAN."
                     ),
+                    "category": "Remote Exposure",
                     "impact": 0,
                 }
             )
@@ -51,6 +52,7 @@ def check_lan_ports(
                         f"Remote admin port open on LAN ({port}). Ensure access is restricted "
                         "(firewall/VLAN/VPN) and hardened."
                     ),
+                    "category": "Remote Exposure",
                     "impact": 5,
                 }
             )
@@ -63,6 +65,7 @@ def check_lan_ports(
                     "severity": "WARNING",
                     "title": "Storage/File Service Port Open",
                     "message": "File-sharing/storage port open on host. Verify necessity and restrict to storage network.",
+                    "category": "Remote Exposure",
                     "impact": 5,
                 }
             )
@@ -74,9 +77,9 @@ def check_lan_ports(
                 "severity": "INFO",
                 "title": "Service Port Open",
                 "message": f"Service port open on LAN ({port}). Review necessity and network restrictions.",
+                "category": "Remote Exposure",
                 "impact": 0,
             }
         )
 
     return findings
-

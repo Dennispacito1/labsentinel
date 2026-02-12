@@ -37,6 +37,8 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
                 "severity": "WARNING",
                 "title": "SSH Config Unavailable",
                 "message": f"Could not read {SSHD_CONFIG_PATH}.",
+                "category": "Authentication Hardening",
+                "impact": 0,
             }
         )
         return findings
@@ -47,6 +49,8 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
                 "severity": "WARNING",
                 "title": "SSH Config Read Error",
                 "message": f"Failed to read {SSHD_CONFIG_PATH}: {exc}",
+                "category": "Authentication Hardening",
+                "impact": 0,
             }
         )
         return findings
@@ -61,6 +65,8 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
                 "severity": "CRITICAL",
                 "title": "PasswordAuthentication Enabled",
                 "message": "PasswordAuthentication is set to yes in sshd_config.",
+                "category": "Authentication Hardening",
+                "impact": 60,
             }
         )
 
@@ -71,6 +77,8 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
                 "severity": "CRITICAL",
                 "title": "PermitRootLogin Enabled",
                 "message": "PermitRootLogin is set to yes in sshd_config.",
+                "category": "Authentication Hardening",
+                "impact": 40,
             }
         )
 

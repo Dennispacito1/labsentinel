@@ -83,9 +83,9 @@ def check_service_hints(vms: List[Dict[str, Any]], cts: List[Dict[str, Any]]) ->
                     "severity": severity,
                     "title": "Service Exposure Hint",
                     "message": f"{message} Guest: {guest['name']} (id={guest_id}).",
+                    "category": "Remote Exposure",
                     "impact": impact,
                 }
             )
 
     return findings
-
