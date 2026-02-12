@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report a problem with LabSentinel
+title: "[Bug]: "
+labels: ["bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve LabSentinel!
+
+        Please provide as much detail as possible so we can reproduce the issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: LabSentinel Version
+      placeholder: e.g. v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Scan Mode
+      options:
+        - API mode
+        - Local mode
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command Used
+      description: Paste the exact command you ran (remove passwords/tokens!)
+      placeholder: labsentinel scan --mode api --host 192.168.1.50 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Output / Logs
+      description: Paste relevant output (remove sensitive information!)
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have removed sensitive information (passwords, tokens, IPs).
+          required: true

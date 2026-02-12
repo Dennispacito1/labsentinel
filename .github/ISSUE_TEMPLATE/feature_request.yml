@@ -1,0 +1,54 @@
+name: Feature Request
+description: Suggest an improvement or new check for LabSentinel
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing an idea to LabSentinel!
+
+        LabSentinel focuses on fast, opinionated posture checks for Proxmox home labs.
+        Please describe your suggestion clearly and explain why it would be useful.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this solve?
+      placeholder: When running scans, I cannot detect ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: How should this work?
+      placeholder: Add a check that ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered other approaches?
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact Level
+      options:
+        - Small (minor improvement)
+        - Medium (new check)
+        - Large (architecture change)
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be willing to submit a PR for this.
