@@ -115,6 +115,8 @@ def list_qemu_vms(client: ProxmoxClient, node: str) -> List[Dict[str, Any]]:
                     config = config_data
             except ProxmoxApiError:
                 config = {}
+        agent_raw = str(config.get("agent", "")).strip().lower()
+        agent_enabled = agent_raw in {"1", "yes", "on", "true"} or agent_raw.startswith("enabled=1")
         vms.append(
             {
                 "node": node,
@@ -123,6 +125,7 @@ def list_qemu_vms(client: ProxmoxClient, node: str) -> List[Dict[str, Any]]:
                 "name": item.get("name"),
                 "status": item.get("status"),
                 "network_summary": parse_qemu_net(config),
+                "agent_enabled": agent_enabled,
             }
         )
     return vms

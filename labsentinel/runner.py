@@ -12,6 +12,7 @@ from labsentinel.checks.firewall import check_datacenter_firewall, check_node_fi
 from labsentinel.checks.guest_firewall import check_guest_firewall
 from labsentinel.checks.lan_exposure import check_lan_ports
 from labsentinel.checks.network_segmentation import check_network_segmentation
+from labsentinel.checks.public_exposure import check_public_exposure
 from labsentinel.checks.remote_exposure import check_remote_exposure
 from labsentinel.checks.service_hints import check_service_hints
 from labsentinel.checks.ssh import check_local_ssh_config
@@ -79,6 +80,8 @@ def run_scan(
     wan_target: Optional[str] = None,
     agent_facts: Optional[Dict[str, Any]] = None,
     update_stale_days: int = 14,
+    public_bridges: Optional[List[str]] = None,
+    guest_ip_map: Optional[Dict[str, List[str]]] = None,
 ) -> Dict[str, Any]:
     """Run checks by mode and return a result payload."""
     normalized_mode = mode.strip().lower()
@@ -94,6 +97,8 @@ def run_scan(
         "wan_probe": wan_probe,
         "wan_target": wan_target,
         "update_stale_days": update_stale_days,
+        "public_bridges": public_bridges or [],
+        "guest_ip_map_supplied": guest_ip_map is not None,
     }
     if agent_facts is not None:
         meta["agent_facts"] = agent_facts
@@ -151,6 +156,14 @@ def run_scan(
             findings.extend(check_network_segmentation(guests, mgmt_bridge=mgmt_bridge))
             findings.extend(check_guest_firewall(client, guests))
             findings.extend(check_service_hints(inventory["vms"], inventory["cts"]))
+            findings.extend(
+                check_public_exposure(
+                    client,
+                    guests,
+                    public_bridges=public_bridges,
+                    guest_ip_map=guest_ip_map,
+                )
+            )
 
             lan_findings: List[Dict[str, Any]] = []
             if lan_scan:

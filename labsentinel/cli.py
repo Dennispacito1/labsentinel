@@ -36,6 +36,12 @@ def _parse_lan_ports(value: Optional[str]) -> Optional[List[int]]:
     return parsed
 
 
+def _parse_csv_values(value: Optional[str]) -> List[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def _load_agent_facts(path: Optional[str]) -> Optional[dict]:
     if not path:
         return None
@@ -51,6 +57,31 @@ def _load_agent_facts(path: Optional[str]) -> Optional[dict]:
     if not isinstance(parsed, dict):
         raise ValueError("--agent-facts JSON must be an object.")
     return parsed
+
+
+def _load_guest_ip_map(path: Optional[str]) -> Optional[dict]:
+    if not path:
+        return None
+    if path == "-":
+        raw = sys.stdin.read()
+    else:
+        with open(path, "r", encoding="utf-8") as handle:
+            raw = handle.read()
+    try:
+        parsed = json_lib.loads(raw)
+    except json_lib.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in --guest-ip-map source: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("--guest-ip-map JSON must be an object mapping vmid -> [ips].")
+
+    normalized: dict = {}
+    for key, value in parsed.items():
+        vmid = str(key)
+        if not isinstance(value, list):
+            continue
+        ips = [item for item in value if isinstance(item, str)]
+        normalized[vmid] = ips
+    return normalized
 
 
 @app.command("scan")
@@ -148,11 +179,23 @@ def scan(
         min=1,
         help="Threshold in days before apt metadata is treated as stale (agent facts check).",
     ),
+    public_bridges: Optional[str] = typer.Option(
+        None,
+        "--public-bridges",
+        help="Comma-separated bridges treated as public-facing (e.g. vmbr1,vmbr2).",
+    ),
+    guest_ip_map: Optional[str] = typer.Option(
+        None,
+        "--guest-ip-map",
+        help="Path to optional vmid->ips JSON mapping file, or '-' to read from stdin.",
+    ),
 ) -> None:
     """Run a LabSentinel scan."""
     try:
         parsed_lan_ports = _parse_lan_ports(lan_ports)
+        parsed_public_bridges = _parse_csv_values(public_bridges)
         parsed_agent_facts = _load_agent_facts(agent_facts)
+        parsed_guest_ip_map = _load_guest_ip_map(guest_ip_map)
         result = run_scan(
             mode=mode,
             host=host,
@@ -170,6 +213,8 @@ def scan(
             wan_target=wan_target,
             agent_facts=parsed_agent_facts,
             update_stale_days=update_stale_days,
+            public_bridges=parsed_public_bridges,
+            guest_ip_map=parsed_guest_ip_map,
         )
     except ValueError as exc:
         typer.secho(str(exc), fg=typer.colors.RED, err=True)
