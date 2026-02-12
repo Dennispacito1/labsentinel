@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "labsentinel"
+version = "0.1.0"
+description = "Secure-by-default posture scanner for Proxmox home labs."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "LabSentinel Contributors" }]
+dependencies = [
+  "requests>=2.31.0",
+  "typer>=0.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/labsentinel"
+Repository = "https://github.com/example/labsentinel"
+Issues = "https://github.com/example/labsentinel/issues"
+
+[project.scripts]
+labsentinel = "labsentinel.cli:app"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["labsentinel*"]
