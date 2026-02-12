@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from labsentinel.checks.agent_checks import check_agent_facts
 from labsentinel.checks.auth_hardening import check_auth_hardening
 from labsentinel.checks.exposure import check_api_exposure
 from labsentinel.checks.firewall import check_datacenter_firewall, check_node_firewall
@@ -76,6 +77,8 @@ def run_scan(
     mgmt_bridge: str = "vmbr0",
     wan_probe: bool = False,
     wan_target: Optional[str] = None,
+    agent_facts: Optional[Dict[str, Any]] = None,
+    update_stale_days: int = 14,
 ) -> Dict[str, Any]:
     """Run checks by mode and return a result payload."""
     normalized_mode = mode.strip().lower()
@@ -90,7 +93,10 @@ def run_scan(
         "mgmt_bridge": mgmt_bridge,
         "wan_probe": wan_probe,
         "wan_target": wan_target,
+        "update_stale_days": update_stale_days,
     }
+    if agent_facts is not None:
+        meta["agent_facts"] = agent_facts
     inventory: Dict[str, Any] = {"nodes": [], "vms": [], "cts": []}
     debug_payload: Dict[str, Any] = {"datacenter_firewall_options": None, "node_firewall_options": {}}
 
@@ -166,6 +172,9 @@ def run_scan(
                 }
     else:
         raise ValueError("Mode must be 'local' or 'api'.")
+
+    if agent_facts is not None:
+        findings.extend(check_agent_facts(agent_facts, update_stale_days=update_stale_days))
 
     normalized_findings = [_normalize_finding(item) for item in findings]
     scoring = calculate_weighted_score(normalized_findings)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json as json_lib
+import sys
 from typing import List, Optional
 
 import typer
@@ -32,6 +33,23 @@ def _parse_lan_ports(value: Optional[str]) -> Optional[List[int]]:
         if port < 1 or port > 65535:
             raise ValueError(f"Port '{port}' out of range in --lan-ports.")
         parsed.append(port)
+    return parsed
+
+
+def _load_agent_facts(path: Optional[str]) -> Optional[dict]:
+    if not path:
+        return None
+    if path == "-":
+        raw = sys.stdin.read()
+    else:
+        with open(path, "r", encoding="utf-8") as handle:
+            raw = handle.read()
+    try:
+        parsed = json_lib.loads(raw)
+    except json_lib.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in --agent-facts source: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("--agent-facts JSON must be an object.")
     return parsed
 
 
@@ -119,10 +137,22 @@ def scan(
         "--wan-target",
         help="WAN hostname/IP to probe when --wan-probe is enabled.",
     ),
+    agent_facts: Optional[str] = typer.Option(
+        None,
+        "--agent-facts",
+        help="Path to optional agent facts JSON file, or '-' to read from stdin.",
+    ),
+    update_stale_days: int = typer.Option(
+        14,
+        "--update-stale-days",
+        min=1,
+        help="Threshold in days before apt metadata is treated as stale (agent facts check).",
+    ),
 ) -> None:
     """Run a LabSentinel scan."""
     try:
         parsed_lan_ports = _parse_lan_ports(lan_ports)
+        parsed_agent_facts = _load_agent_facts(agent_facts)
         result = run_scan(
             mode=mode,
             host=host,
@@ -138,6 +168,8 @@ def scan(
             mgmt_bridge=mgmt_bridge,
             wan_probe=wan_probe,
             wan_target=wan_target,
+            agent_facts=parsed_agent_facts,
+            update_stale_days=update_stale_days,
         )
     except ValueError as exc:
         typer.secho(str(exc), fg=typer.colors.RED, err=True)

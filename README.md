@@ -56,6 +56,30 @@ JSON export:
 labsentinel --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD' --json
 ```
 
+## Agent Facts (optional)
+
+Collect local host facts on the Proxmox node and pass them to LabSentinel for extra checks.
+
+On the Proxmox host:
+
+```bash
+python3 labsentinel_agent/collect_facts.py > agent_facts.json
+```
+
+From the scanning machine:
+
+```bash
+labsentinel --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD' --agent-facts agent_facts.json
+```
+
+Using stdin:
+
+```bash
+python3 labsentinel_agent/collect_facts.py | labsentinel --mode api --host 192.168.1.10 --user root@pam --password 'YOUR_PASSWORD' --agent-facts -
+```
+
+Do not share agent fact files publicly; they may contain sensitive host metadata.
+
 ## Example output
 
 ```text
