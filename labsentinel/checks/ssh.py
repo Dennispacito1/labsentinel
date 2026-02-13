@@ -3,29 +3,52 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 SSHD_CONFIG_PATH = Path("/etc/ssh/sshd_config")
+
+
+def _strip_inline_comment(line: str) -> str:
+    in_quotes = False
+    escaped = False
+    output: List[str] = []
+    for char in line:
+        if escaped:
+            output.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            output.append(char)
+            continue
+        if char == '"':
+            in_quotes = not in_quotes
+            output.append(char)
+            continue
+        if char == "#" and not in_quotes:
+            break
+        output.append(char)
+    return "".join(output).strip()
 
 
 def _get_effective_value(config_text: str, key: str) -> Optional[str]:
     """Return the last effective value for a key in sshd_config."""
     value: Optional[str] = None
     for raw_line in config_text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
+        line = _strip_inline_comment(raw_line).strip()
+        if not line:
             continue
         parts = line.split()
         if len(parts) < 2:
             continue
         if parts[0].lower() == key.lower():
-            value = parts[1]
+            value = " ".join(parts[1:]).strip()
     return value
 
 
-def check_local_ssh_config() -> List[Dict[str, str]]:
+def check_local_ssh_config() -> List[Dict[str, Any]]:
     """Check local sshd_config for insecure SSH options."""
-    findings: List[Dict[str, str]] = []
+    findings: List[Dict[str, Any]] = []
 
     try:
         config_text = SSHD_CONFIG_PATH.read_text(encoding="utf-8", errors="ignore")
@@ -55,10 +78,11 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
         )
         return findings
 
-    password_auth = _get_effective_value(config_text, "PasswordAuthentication")
-    permit_root_login = _get_effective_value(config_text, "PermitRootLogin")
+    password_auth = (_get_effective_value(config_text, "PasswordAuthentication") or "").lower()
+    permit_root_login = (_get_effective_value(config_text, "PermitRootLogin") or "").lower()
+    pubkey_auth = (_get_effective_value(config_text, "PubkeyAuthentication") or "").lower()
 
-    if (password_auth or "").lower() == "yes":
+    if password_auth == "yes":
         findings.append(
             {
                 "id": "SSH_PASSWORD_AUTH_ENABLED",
@@ -66,11 +90,11 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
                 "title": "PasswordAuthentication Enabled",
                 "message": "PasswordAuthentication is set to yes in sshd_config.",
                 "category": "Authentication Hardening",
-                "impact": 60,
+                "impact": 70,
             }
         )
 
-    if (permit_root_login or "").lower() == "yes":
+    if permit_root_login == "yes":
         findings.append(
             {
                 "id": "SSH_ROOT_LOGIN_ENABLED",
@@ -78,7 +102,33 @@ def check_local_ssh_config() -> List[Dict[str, str]]:
                 "title": "PermitRootLogin Enabled",
                 "message": "PermitRootLogin is set to yes in sshd_config.",
                 "category": "Authentication Hardening",
-                "impact": 40,
+                "impact": 70,
+            }
+        )
+    elif permit_root_login in {"prohibit-password", "without-password"}:
+        findings.append(
+            {
+                "id": "SSH_ROOT_LOGIN_KEY_ONLY",
+                "severity": "WARNING",
+                "title": "PermitRootLogin Allows Key-Only Root Login",
+                "message": (
+                    "PermitRootLogin is set to prohibit-password/without-password. "
+                    "Consider disabling direct root SSH login."
+                ),
+                "category": "Authentication Hardening",
+                "impact": 30,
+            }
+        )
+
+    if pubkey_auth == "no":
+        findings.append(
+            {
+                "id": "SSH_PUBKEY_AUTH_DISABLED",
+                "severity": "CRITICAL",
+                "title": "PubkeyAuthentication Disabled",
+                "message": "PubkeyAuthentication is set to no in sshd_config.",
+                "category": "Authentication Hardening",
+                "impact": 70,
             }
         )
 
