@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -63,6 +65,60 @@ def _network_inventory_summary(guests: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _resolve_agent_facts(value: Any) -> Optional[Dict[str, Any]]:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            if value == "-":
+                raw = sys.stdin.read()
+            else:
+                with open(value, "r", encoding="utf-8") as handle:
+                    raw = handle.read()
+        except OSError as exc:
+            raise ValueError(f"Unable to read --agent-facts source: {exc}") from exc
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in --agent-facts source: {exc}") from exc
+        if isinstance(parsed, dict):
+            return parsed
+        raise ValueError("--agent-facts JSON must be an object.")
+    return None
+
+
+def _agent_facts_summary(facts: Dict[str, Any]) -> Dict[str, Any]:
+    updates = facts.get("updates", {}) if isinstance(facts, dict) else {}
+    tls = facts.get("tls", {}) if isinstance(facts, dict) else {}
+    zfs = facts.get("zfs", {}) if isinstance(facts, dict) else {}
+    host = facts.get("host", {}) if isinstance(facts, dict) else {}
+    return {
+        "agent_version": facts.get("agent_version"),
+        "timestamp": facts.get("timestamp"),
+        "host": {
+            "hostname": host.get("hostname"),
+            "kernel": host.get("kernel"),
+            "pve_version": host.get("pve_version"),
+        },
+        "updates": {
+            "pending_updates_count": updates.get("pending_updates_count"),
+            "last_apt_update_success": updates.get("last_apt_update_success"),
+            "last_apt_upgrade": updates.get("last_apt_upgrade"),
+        },
+        "tls": {
+            "cert_path": tls.get("cert_path"),
+            "self_signed": tls.get("self_signed"),
+            "not_after": tls.get("not_after"),
+        },
+        "zfs": {
+            "zfs_present": zfs.get("zfs_present"),
+            "any_encrypted_dataset": zfs.get("any_encrypted_dataset"),
+        },
+    }
+
+
 def run_scan(
     mode: str,
     host: Optional[str] = None,
@@ -78,12 +134,14 @@ def run_scan(
     mgmt_bridge: str = "vmbr0",
     wan_probe: bool = False,
     wan_target: Optional[str] = None,
-    agent_facts: Optional[Dict[str, Any]] = None,
+    agent_facts: Optional[Any] = None,
     update_stale_days: int = 14,
     public_bridges: Optional[List[str]] = None,
     guest_ip_map: Optional[Dict[str, List[str]]] = None,
 ) -> Dict[str, Any]:
     """Run checks by mode and return a result payload."""
+    resolved_agent_facts = _resolve_agent_facts(agent_facts)
+
     normalized_mode = mode.strip().lower()
     findings: List[Dict[str, Any]] = []
     meta: Dict[str, Any] = {
@@ -99,9 +157,10 @@ def run_scan(
         "update_stale_days": update_stale_days,
         "public_bridges": public_bridges or [],
         "guest_ip_map_supplied": guest_ip_map is not None,
+        "agent_facts_present": resolved_agent_facts is not None,
     }
-    if agent_facts is not None:
-        meta["agent_facts"] = agent_facts
+    if resolved_agent_facts is not None:
+        meta["agent_facts_summary"] = _agent_facts_summary(resolved_agent_facts)
     inventory: Dict[str, Any] = {"nodes": [], "vms": [], "cts": []}
     debug_payload: Dict[str, Any] = {"datacenter_firewall_options": None, "node_firewall_options": {}}
 
@@ -186,8 +245,8 @@ def run_scan(
     else:
         raise ValueError("Mode must be 'local' or 'api'.")
 
-    if agent_facts is not None:
-        findings.extend(check_agent_facts(agent_facts, update_stale_days=update_stale_days))
+    if resolved_agent_facts is not None:
+        findings.extend(check_agent_facts(resolved_agent_facts, update_stale_days=update_stale_days))
 
     normalized_findings = [_normalize_finding(item) for item in findings]
     scoring = calculate_weighted_score(normalized_findings)
@@ -217,5 +276,7 @@ def run_scan(
     }
     if normalized_mode == "api" and debug:
         result["debug"] = debug_payload
+        if resolved_agent_facts is not None:
+            result["debug"]["agent_facts"] = resolved_agent_facts
     return result
 

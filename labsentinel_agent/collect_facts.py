@@ -39,7 +39,7 @@ def _collect_updates() -> Dict[str, Any]:
     if sim is not None:
         pending_updates_count = sum(1 for line in sim.splitlines() if line.startswith("Inst "))
 
-    last_apt_update = _iso_from_mtime(Path("/var/lib/apt/periodic/update-success-stamp"))
+    last_apt_update_success = _iso_from_mtime(Path("/var/lib/apt/periodic/update-success-stamp"))
 
     last_apt_upgrade: Optional[str] = None
     history = Path("/var/log/apt/history.log")
@@ -51,11 +51,17 @@ def _collect_updates() -> Dict[str, Any]:
         lines = [line.strip() for line in content.splitlines() if line.strip().startswith("End-Date:")]
         if lines:
             # End-Date: 2026-02-08  20:50:44
-            last_apt_upgrade = lines[-1].split("End-Date:", 1)[1].strip()
+            raw = lines[-1].split("End-Date:", 1)[1].strip()
+            normalized = " ".join(raw.split())
+            try:
+                parsed = dt.datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
+                last_apt_upgrade = parsed.replace(tzinfo=dt.timezone.utc).isoformat()
+            except ValueError:
+                last_apt_upgrade = None
 
     return {
         "pending_updates_count": pending_updates_count,
-        "last_apt_update": last_apt_update,
+        "last_apt_update_success": last_apt_update_success,
         "last_apt_upgrade": last_apt_upgrade,
     }
 
@@ -65,6 +71,7 @@ def _collect_tls() -> Dict[str, Any]:
         Path("/etc/pve/local/pveproxy-ssl.pem"),
         Path("/etc/pve/pveproxy-ssl.pem"),
         Path("/etc/pve/local/pve-ssl.pem"),
+        Path("/etc/pve/pveproxy-ssl.pem"),
     ]
     cert_path = next((p for p in cert_candidates if p.exists()), None)
 
@@ -72,9 +79,6 @@ def _collect_tls() -> Dict[str, Any]:
         "cert_path": str(cert_path) if cert_path else None,
         "self_signed": None,
         "not_after": None,
-        "subject": None,
-        "issuer": None,
-        "fingerprint": None,
     }
     if cert_path is None:
         return data
@@ -91,33 +95,32 @@ def _collect_tls() -> Dict[str, Any]:
             "-noout",
             "-subject",
             "-issuer",
-            "-dates",
-            "-fingerprint",
+            "-enddate",
         ]
     )
     if output is None:
         return data
 
+    subject: Optional[str] = None
+    issuer: Optional[str] = None
     for line in output.splitlines():
         line = line.strip()
         if line.startswith("subject="):
-            data["subject"] = line.split("subject=", 1)[1].strip()
+            subject = line.split("subject=", 1)[1].strip()
         elif line.startswith("issuer="):
-            data["issuer"] = line.split("issuer=", 1)[1].strip()
+            issuer = line.split("issuer=", 1)[1].strip()
         elif line.startswith("notAfter="):
             data["not_after"] = line.split("notAfter=", 1)[1].strip()
-        elif "Fingerprint=" in line:
-            data["fingerprint"] = line.split("Fingerprint=", 1)[1].strip()
 
-    if data["subject"] is not None and data["issuer"] is not None:
-        data["self_signed"] = data["subject"] == data["issuer"]
+    if subject is not None and issuer is not None:
+        data["self_signed"] = subject == issuer
 
     return data
 
 
 def _collect_zfs() -> Dict[str, Any]:
     if shutil.which("zfs") is None:
-        return {"present": False, "any_encrypted_dataset": None}
+        return {"zfs_present": False, "any_encrypted_dataset": None}
 
     output = _run(
         [
@@ -132,7 +135,7 @@ def _collect_zfs() -> Dict[str, Any]:
         ]
     )
     if output is None:
-        return {"present": True, "any_encrypted_dataset": None}
+        return {"zfs_present": True, "any_encrypted_dataset": None}
 
     any_encrypted = False
     for line in output.splitlines():
@@ -148,7 +151,7 @@ def _collect_zfs() -> Dict[str, Any]:
             any_encrypted = True
             break
 
-    return {"present": True, "any_encrypted_dataset": any_encrypted}
+    return {"zfs_present": True, "any_encrypted_dataset": any_encrypted}
 
 
 def _host_info() -> Dict[str, Any]:

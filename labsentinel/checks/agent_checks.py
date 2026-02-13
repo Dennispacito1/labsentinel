@@ -26,12 +26,23 @@ def check_agent_facts(agent_facts: Dict[str, Any], *, update_stale_days: int = 1
     zfs = agent_facts.get("zfs", {}) if isinstance(agent_facts, dict) else {}
 
     pending = updates.get("pending_updates_count")
-    if isinstance(pending, int) and pending > 0:
+    if isinstance(pending, int) and pending >= 25:
+        findings.append(
+            {
+                "id": "AGENT_UPDATES_PENDING_MANY",
+                "severity": "CRITICAL",
+                "title": "Many Updates Pending",
+                "message": f"{pending} pending package updates detected on Proxmox host.",
+                "category": "Update Hygiene",
+                "impact": 70,
+            }
+        )
+    elif isinstance(pending, int) and pending >= 1:
         findings.append(
             {
                 "id": "AGENT_UPDATES_PENDING",
                 "severity": "WARNING",
-                "title": "Pending OS Updates",
+                "title": "Updates Pending",
                 "message": f"{pending} pending package updates detected on Proxmox host.",
                 "category": "Update Hygiene",
                 "impact": 40,
@@ -49,7 +60,7 @@ def check_agent_facts(agent_facts: Dict[str, Any], *, update_stale_days: int = 1
             }
         )
 
-    last_update = _parse_timestamp(updates.get("last_apt_update"))
+    last_update = _parse_timestamp(updates.get("last_apt_update_success"))
     if last_update is not None:
         age_days = (datetime.now(timezone.utc) - last_update).days
         if age_days > int(update_stale_days):
@@ -95,7 +106,7 @@ def check_agent_facts(agent_facts: Dict[str, Any], *, update_stale_days: int = 1
                 "title": "Self-Signed TLS Certificate",
                 "message": "Proxmox TLS certificate appears self-signed.",
                 "category": "Authentication Hardening",
-                "impact": 10,
+                "impact": 20,
             }
         )
     elif self_signed is False:
@@ -121,7 +132,7 @@ def check_agent_facts(agent_facts: Dict[str, Any], *, update_stale_days: int = 1
             }
         )
 
-    zfs_present = zfs.get("present")
+    zfs_present = zfs.get("zfs_present")
     any_encrypted = zfs.get("any_encrypted_dataset")
     if zfs_present is False:
         findings.append(
@@ -140,9 +151,9 @@ def check_agent_facts(agent_facts: Dict[str, Any], *, update_stale_days: int = 1
                 "id": "AGENT_ZFS_NOT_ENCRYPTED",
                 "severity": "WARNING",
                 "title": "ZFS Encryption Not Enabled",
-                "message": "ZFS datasets detected but encryption appears disabled.",
+                "message": "ZFS encryption not detected on available datasets.",
                 "category": "Backup Protection",
-                "impact": 20,
+                "impact": 40,
             }
         )
     elif zfs_present is True and any_encrypted is True:
@@ -169,4 +180,3 @@ def check_agent_facts(agent_facts: Dict[str, Any], *, update_stale_days: int = 1
         )
 
     return findings
-

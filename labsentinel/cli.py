@@ -42,23 +42,6 @@ def _parse_csv_values(value: Optional[str]) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def _load_agent_facts(path: Optional[str]) -> Optional[dict]:
-    if not path:
-        return None
-    if path == "-":
-        raw = sys.stdin.read()
-    else:
-        with open(path, "r", encoding="utf-8") as handle:
-            raw = handle.read()
-    try:
-        parsed = json_lib.loads(raw)
-    except json_lib.JSONDecodeError as exc:
-        raise ValueError(f"Invalid JSON in --agent-facts source: {exc}") from exc
-    if not isinstance(parsed, dict):
-        raise ValueError("--agent-facts JSON must be an object.")
-    return parsed
-
-
 def _load_guest_ip_map(path: Optional[str]) -> Optional[dict]:
     if not path:
         return None
@@ -194,7 +177,6 @@ def scan(
     try:
         parsed_lan_ports = _parse_lan_ports(lan_ports)
         parsed_public_bridges = _parse_csv_values(public_bridges)
-        parsed_agent_facts = _load_agent_facts(agent_facts)
         parsed_guest_ip_map = _load_guest_ip_map(guest_ip_map)
         result = run_scan(
             mode=mode,
@@ -211,7 +193,7 @@ def scan(
             mgmt_bridge=mgmt_bridge,
             wan_probe=wan_probe,
             wan_target=wan_target,
-            agent_facts=parsed_agent_facts,
+            agent_facts=agent_facts,
             update_stale_days=update_stale_days,
             public_bridges=parsed_public_bridges,
             guest_ip_map=parsed_guest_ip_map,
