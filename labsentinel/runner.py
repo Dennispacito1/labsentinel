@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from labsentinel.checks.agent_checks import check_agent_facts
 from labsentinel.checks.auth_hardening import check_auth_hardening
+from labsentinel.checks.backup import check_backup_jobs
 from labsentinel.checks.exposure import check_api_exposure
 from labsentinel.checks.firewall import check_datacenter_firewall, check_node_firewall
 from labsentinel.checks.guest_firewall import check_guest_firewall
@@ -214,6 +215,7 @@ def run_scan(
             guests = list(inventory["vms"]) + list(inventory["cts"])
             findings.extend(check_network_segmentation(guests, mgmt_bridge=mgmt_bridge))
             findings.extend(check_guest_firewall(client, guests))
+            findings.extend(check_backup_jobs(client))
             findings.extend(check_service_hints(inventory["vms"], inventory["cts"]))
             findings.extend(
                 check_public_exposure(
